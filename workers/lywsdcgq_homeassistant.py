@@ -127,16 +127,16 @@ class Lywsdcgq_HomeassistantWorker(BaseWorker):
             if fmac in sensors:
                 for sensor in sensors[fmac]:
                     attrs=sensor.device_state_attributes
-                    if sensor.device_class == attr and (attr == 'temperature' or attr == 'humidity'):
-                        if 'mean' in attrs:
-                            ret.append(
-                                MqttMessage(
-                                    topic=self.format_topic(name, attr),
-                                    payload=attrs['mean'],
+                    if sensor.device_class == attr:
+                        if attr == 'temperature' or attr == 'humidity':
+                            if 'mean' in attrs:
+                                ret.append(
+                                    MqttMessage(
+                                        topic=self.format_topic(name, attr),
+                                        payload=attrs['mean'],
+                                    )
                                 )
-                            )
-                    else:
-                        if 'battery_level' in attrs:
+                        elif attr == 'battery' and 'battery_level' in attrs:
                             ret.append(
                                 MqttMessage(
                                     topic=self.format_topic(name, attr),
