@@ -29,7 +29,7 @@ class Lywsdcgq_HomeassistantWorker(BaseWorker):
         # Initialize scanner platform
         self.poller = misensor.BLEScanner()
         # Setup passive scanner platform
-        self.poller.setup_platform(self.poller_settings)
+        self.poller.setup_platform(self.devices, self.poller_settings)
 
         for name, mac in self.devices.items():
             _LOGGER.debug("Adding %s device '%s' (%s)", repr(self), name, mac)
@@ -37,7 +37,7 @@ class Lywsdcgq_HomeassistantWorker(BaseWorker):
     def config(self):
         ret = []
         for name, data in self.devices.items():
-            ret += self.config_device(name, data["mac"])
+            ret += self.config_device(name, data)
         return ret
 
     def config_device(self, name, mac):
@@ -78,20 +78,24 @@ class Lywsdcgq_HomeassistantWorker(BaseWorker):
     def status_update(self):
         _LOGGER.info("Updating %d %s devices", len(self.devices), repr(self))
 
+         # Trigger update of sensors
+        self.poller.update_ble()
         for name, data in self.devices.items():
-            _LOGGER.debug("Updating %s device '%s' (%s)", repr(self), name, data["mac"])
+            _LOGGER.debug("Updating %s device '%s' (%s)", repr(self), name, data)
             from btlewrap import BluetoothBackendException
+
+           
 
             try:
                 with timeout(self.per_device_timeout, exception=DeviceTimeoutError):
-                    yield self.update_device_state(name, data["poller"])
+                    yield self.update_device_state(name, data, self.poller)
             except BluetoothBackendException as e:
                 logger.log_exception(
                     _LOGGER,
                     "Error during update of %s device '%s' (%s): %s",
                     repr(self),
                     name,
-                    data["mac"],
+                    data,
                     type(e).__name__,
                     suppress=True,
                 )
@@ -101,7 +105,7 @@ class Lywsdcgq_HomeassistantWorker(BaseWorker):
                     "Time out during update of %s device '%s' (%s)",
                     repr(self),
                     name,
-                    data["mac"],
+                    data,
                     suppress=True,
                 )
             except RuntimeError as e:
@@ -110,19 +114,34 @@ class Lywsdcgq_HomeassistantWorker(BaseWorker):
                     "Error during update of %s device '%s' (%s): %s",
                     repr(self),
                     name,
-                    data["mac"],
+                    data,
                     type(e).__name__,
                     suppress=True,
                 )
 
-    def update_device_state(self, name, poller):
+    def update_device_state(self, name, mac, poller):
         ret = []
-        poller.clear_cache()
         for attr in monitoredAttrs:
-            ret.append(
-                MqttMessage(
-                    topic=self.format_topic(name, attr),
-                    payload=poller.parameter_value(attr),
-                )
-            )
+            sensors=poller.get_sensors()
+            fmac=mac.replace(':', '')
+            if fmac in sensors:
+                for sensor in sensors[fmac]:
+                    attrs=sensor.device_state_attributes
+                    if sensor.device_class == attr and (attr == 'temperature' or attr == 'humidity'):
+                        if 'mean' in attrs:
+                            ret.append(
+                                MqttMessage(
+                                    topic=self.format_topic(name, attr),
+                                    payload=attrs['mean'],
+                                )
+                            )
+                    else:
+                        if 'battery_level' in attrs:
+                            ret.append(
+                                MqttMessage(
+                                    topic=self.format_topic(name, attr),
+                                    payload=attrs['battery_level'],
+                                )
+                            )
+
         return ret
