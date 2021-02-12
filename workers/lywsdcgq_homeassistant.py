@@ -121,27 +121,31 @@ class Lywsdcgq_HomeassistantWorker(BaseWorker):
 
     def update_device_state(self, name, mac, poller):
         ret = []
-        for attr in monitoredAttrs:
-            sensors=poller.get_sensors()
-            fmac=mac.replace(':', '')
-            if fmac in sensors:
-                for sensor in sensors[fmac]:
-                    attrs=sensor.device_state_attributes
-                    if sensor.device_class == attr:
-                        if attr == 'temperature' or attr == 'humidity':
-                            if 'mean' in attrs:
-                                ret.append(
-                                    MqttMessage(
-                                        topic=self.format_topic(name, attr),
-                                        payload=attrs['mean'],
-                                    )
-                                )
-                        elif attr == 'battery' and 'battery_level' in attrs:
-                            ret.append(
-                                MqttMessage(
-                                    topic=self.format_topic(name, attr),
-                                    payload=attrs['battery_level'],
-                                )
-                            )
-
+        sensors=poller.get_sensors()
+        fmac=mac.replace(':', '')
+        # verify the sensor was found by the sensor poller
+        if fmac in sensors:
+            for sensor in sensors[fmac]:
+                attrs=sensor.device_state_attributes
+                if sensor.device_class == 'temperature' and 'mean' in attrs:
+                    ret.append(
+                        MqttMessage(
+                            topic=self.format_topic(name, 'temperature'),
+                            payload=attrs['mean'],
+                        )
+                    )
+                if sensor.device_class == 'humidity' and 'mean' in attrs:
+                    ret.append(
+                        MqttMessage(
+                            topic=self.format_topic(name, 'humidity'),
+                            payload=attrs['mean'],
+                        )
+                    )
+                if sensor.device_class == 'battery' and sensor.state != None:
+                    ret.append(
+                        MqttMessage(
+                            topic=self.format_topic(name, 'battery'),
+                            payload=sensor.state,
+                        )
+                    )
         return ret
