@@ -91,11 +91,11 @@ class Airthings_Wave2_HomeassistantWorker(BaseWorker):
                 )
             elif attr == ATTR_RADON_LEVEL_STA:
                 payload.update(
-                    {"davice_class": DEVICE_CLASS_RADON, "unit_of_measurement": VOLUME_BECQUEREL}
+                    {"device_class": DEVICE_CLASS_RADON, "unit_of_measurement": VOLUME_BECQUEREL}
                 )
             elif attr == ATTR_RADON_LEVEL_LTA:
                     payload.update(
-                    {"davice_class": DEVICE_CLASS_RADON, "unit_of_measurement": VOLUME_BECQUEREL}
+                    {"device_class": DEVICE_CLASS_RADON, "unit_of_measurement": VOLUME_BECQUEREL}
                 )
             ret.append(
                 MqttConfigMessage(
