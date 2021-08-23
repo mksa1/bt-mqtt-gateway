@@ -85,6 +85,7 @@ cd bt-mqtt-gateway
 virtualenv -p python3 .venv
 source .venv/bin/activate
 sudo pip3 install -r requirements.txt
+python -m pip -r install requirements.txt
 ```
 
 All needed python libs, per each worker, should be auto installed on run. If now you can install them manually:
